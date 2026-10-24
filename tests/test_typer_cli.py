@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+from rich.text import Text
 from typer.testing import CliRunner
 
 from strava_bulk_import import cli
@@ -88,7 +89,7 @@ def test_server_is_required_for_online_commands():
     for command in ["login", "refresh", "recover"]:
         result = runner.invoke(cli.app, [command])
         assert result.exit_code == 2
-        assert "--server" in result.output
+        assert "--server" in Text.from_ansi(result.output).plain
 
 
 def test_typer_preserves_blocked_exit_status(archive):

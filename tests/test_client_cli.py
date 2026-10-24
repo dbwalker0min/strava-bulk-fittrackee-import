@@ -6,6 +6,7 @@ from urllib.parse import parse_qs, urlsplit
 
 import httpx
 import pytest
+from rich.text import Text
 from typer.testing import CliRunner
 
 from strava_bulk_import.auth import authorization_url
@@ -149,7 +150,7 @@ def test_limit_requires_positive(tmp_path, archive):
         app, ["import", str(archive.zip.filename), "--dryrun", "--limit", "0"]
     )
     assert result.exit_code == 2
-    assert "--limit" in result.output
+    assert "--limit" in Text.from_ansi(result.output).plain
 
 
 def test_mutating_import_requires_server(archive):
