@@ -72,6 +72,7 @@ def test_mapped_activity_skipped_before_unsupported_sport(client, server, archiv
     archive.activities[0].row["Activity Type"] = "Yoga"
     result = run(
         archive,
+        all_sports=True,
         client=client,
         journal=None,
         dryrun=True,
@@ -204,7 +205,7 @@ def test_manual_endpoint_payload(client, server, archive, tmp_path, monkeypatch)
 
 
 def test_trackless_file_uses_manual(archive):
-    archive.recording = lambda _: None
+    archive.recording = lambda _, **kwargs: None
     result = prepared(archive)
     assert result.recording is None
     assert result.metadata["duration"] == 60

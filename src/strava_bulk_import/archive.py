@@ -22,12 +22,17 @@ SPORTS = {
     "Ride": "Cycling (Sport)",
     "E-Bike Ride": "Cycling (Sport)",
     "Virtual Ride": "Cycling (Virtual)",
+    "Indoor Cycling": "Cycling (Virtual)",
+    "Indoor Ride": "Cycling (Virtual)",
     "Velomobile": "Cycling (Sport)",
     "Walk": "Walking",
     "Hike": "Hiking",
     "Run": "Running",
     "Trail Run": "Trail",
     "Mountain Bike Ride": "Mountain Biking",
+    "E-Mountain Bike Ride": "Mountain Biking (Electric)",
+    "Gravel Ride": "Cycling (Sport)",
+    "Handcycle": "Cycling (Sport)",
     "Canoe": "Canoeing",
     "Kayaking": "Kayaking",
     "Rowing": "Rowing",
@@ -36,8 +41,37 @@ SPORTS = {
 }
 
 
+RIDE_TYPES = frozenset(
+    {
+        "Ride",
+        "E-Bike Ride",
+        "Mountain Bike Ride",
+        "E-Mountain Bike Ride",
+        "Gravel Ride",
+        "Handcycle",
+        "Velomobile",
+        "Virtual Ride",
+        "Indoor Cycling",
+        "Indoor Ride",
+    }
+)
+
+
 class ImportProblem(Exception):
     """A safe, user-facing explanation without credentials or response bodies."""
+
+
+class ExcludedActivity(ImportProblem):
+    """An intentional scope exclusion, counted separately from invalid input."""
+
+
+def indoor_reason(activity: Activity) -> str | None:
+    if activity.sport in {"Virtual Ride", "Virtual Run", "Indoor Cycling", "Indoor Ride"}:
+        return "indoor or virtual activity type"
+    for field in ("Trainer", "Indoor", "Virtual"):
+        if activity.row.get(field, "").strip().lower() in {"true", "1", "yes"}:
+            return "explicit indoor/trainer/virtual flag"
+    return None
 
 
 def number(value: str, name: str) -> float:
@@ -181,7 +215,9 @@ class Archive:
     def csv(self, name: str) -> list[dict[str, str]]:
         return list(csv.DictReader(io.StringIO(self.read(name, MAX_CSV).decode("utf-8-sig"))))
 
-    def recording(self, activity: Activity) -> tuple[str, bytes] | None:
+    def recording(
+        self, activity: Activity, *, include_indoor: bool = True
+    ) -> tuple[str, bytes] | None:
         name = activity.recording
         if not name:
             return None
@@ -201,7 +237,10 @@ class Archive:
             stripped = data.lstrip(b" \t\r\n")
             if stripped.startswith(b"<?xml"):
                 data = stripped
-        if not has_coordinates(extension, data):
+        coordinates, indoor = recording_info(extension, data)
+        if indoor and not include_indoor:
+            raise ExcludedActivity("recording explicitly identifies indoor or virtual cycling")
+        if not coordinates:
             return None
         return "recording" + extension, data
 
@@ -221,19 +260,30 @@ class Archive:
 
 
 def has_coordinates(extension: str, data: bytes) -> bool:
+    return recording_info(extension, data)[0]
+
+
+def recording_info(extension: str, data: bytes) -> tuple[bool, bool]:
     if extension == ".fit":
         import fitdecode  # type: ignore[import-untyped]
 
         try:
-            with fitdecode.FitReader(io.BytesIO(data)) as reader:
+            coordinates, indoor = False, False
+            with fitdecode.FitReader(io.BytesIO(data), processor=None) as reader:
                 for frame in reader:
-                    if isinstance(frame, fitdecode.FitDataMessage) and frame.name == "record":
-                        if (
+                    if not isinstance(frame, fitdecode.FitDataMessage):
+                        continue
+                    if frame.name == "record":
+                        coordinates |= (
                             frame.get_value("position_lat", fallback=None) is not None
                             and frame.get_value("position_long", fallback=None) is not None
-                        ):
-                            return True
-            return False
+                        )
+                    if frame.name in {"session", "sport", "lap"}:
+                        indoor |= frame.get_value("sub_sport", fallback=None) in {
+                            "indoor_cycling",
+                            "virtual_activity",
+                        }
+            return coordinates, indoor
         except Exception as exc:
             raise ImportProblem("Cannot parse FIT recording") from exc
     try:
@@ -244,5 +294,5 @@ def has_coordinates(extension: str, data: bytes) -> bool:
         return any(
             e.tag.rsplit("}", 1)[-1] == "trkpt" and "lat" in e.attrib and "lon" in e.attrib
             for e in root.iter()
-        )
-    return any(e.tag.rsplit("}", 1)[-1] == "Position" for e in root.iter())
+        ), False
+    return any(e.tag.rsplit("}", 1)[-1] == "Position" for e in root.iter()), False

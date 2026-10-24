@@ -21,7 +21,7 @@ Or install this checkout with `pip install .`. This package has not been publish
 to PyPI. Keep private exports under the ignored `data/` directory.
 
 `--dryrun` (also `--dry-run`) reads recordings and attachment references and reports
-candidates, already mapped activities, and blockers. Offline inspection needs no
+candidates, scope exclusions, already mapped activities, and blockers. Offline inspection needs no
 credentials. Add `--server https://fittrackee.example` to check actual sports and
 identities with existing credentials. Online dryruns send **GET requests only**:
 no workouts, photos, claims, token refreshes, journal writes, or state directories
@@ -75,6 +75,20 @@ still coordinates through server claims.
 
 ## Import
 
+The default scope is **outdoor cycling history for planning rides**. Non-cycling
+activities are reported as `excluded`, rather than import failures. Use
+`--all-sports` to include other sports. Indoor/virtual activities are separately
+excluded unless `--include-indoor` is supplied. Both switches work in dryrun and
+actual imports; `--activity-id` and `--sport-map` do not override these filters.
+
+Indoor classification uses explicit virtual/indoor activity types, true
+Trainer/Indoor/Virtual CSV flags when supplied, and FIT `sub_sport` metadata
+(`indoor_cycling` or `virtual_activity`). A ride without coordinates or a recording
+is **not** assumed to be indoors: outdoor trackless rides remain eligible for
+manual creation. Unlabelled indoor rides cannot be identified reliably; inspect
+the dryrun before importing. No title guessing is used. Exclusions create no claim,
+identity, photo or workout and do not remove anything previously imported.
+
 Start with a small selection, then rerun without the selection:
 
 ```sh
@@ -120,7 +134,7 @@ inspection cannot verify that your chosen labels are active on the target.
 
 FitTrackee 1.3.6's manual endpoint rejects numeric zero distance/duration. Such
 workouts are blocked without changing the distance or fabricating a recording.
-Weight Training, Workout, Yoga and Sail have no default sport equivalent; choose
+With `--all-sports`, Weight Training, Workout, Yoga and Sail have no default sport equivalent; choose
 an explicit compatible sport mapping if appropriate. `.bin` recordings, videos,
 missing/corrupt referenced files, overlong metadata and excess attachments are
 reported as blockers. No arbitrary metadata/recording fallback is used for an

@@ -10,7 +10,15 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import quote
 
-from .archive import SPORTS, Activity, Archive, ImportProblem
+from .archive import (
+    RIDE_TYPES,
+    SPORTS,
+    Activity,
+    Archive,
+    ExcludedActivity,
+    ImportProblem,
+    indoor_reason,
+)
 from .client import APIError, Client
 from .journal import Journal
 
@@ -44,12 +52,13 @@ def prepare(
     timezone: str,
     overrides: dict[str, str],
     include_photos: bool,
+    include_indoor: bool = True,
 ) -> Prepared:
     label = overrides.get(activity.sport, SPORTS.get(activity.sport))
     if label not in sports:
         raise ImportProblem("No active FitTrackee sport mapping for " + activity.sport)
     sport_id = sports[label]
-    recording = archive.recording(activity)
+    recording = archive.recording(activity, include_indoor=include_indoor)
     metadata = activity.metadata(sport_id) if recording else activity.manual(sport_id, timezone)
     if recording:
         metadata.update(analysis_visibility="private", map_visibility="private")
@@ -170,6 +179,8 @@ def run(
     limit: int | None,
     activity_ids: set[str],
     emit: Callable[[str], None] = print,
+    include_indoor: bool = False,
+    all_sports: bool = False,
 ) -> Counter[str]:
     sports = (
         active_sports(client)
@@ -192,6 +203,10 @@ def run(
         raise ImportProblem("One or more selected activity IDs are absent from the archive")
     for activity in selected[:limit]:
         try:
+            if not all_sports and activity.sport not in RIDE_TYPES:
+                raise ExcludedActivity("outside cycling scope (use --all-sports to include)")
+            if not include_indoor and (reason := indoor_reason(activity)):
+                raise ExcludedActivity(reason)
             if client:
                 mapped = client.request(
                     "GET", identity_path("identities", activity.external_id), missing_ok=True
@@ -208,7 +223,9 @@ def run(
                     counts["recovered"] += 1
                     emit(f"{activity.external_id}: recovered mapping")
                     continue
-            prepared = prepare(archive, activity, sports, timezone, overrides, include_photos)
+            prepared = prepare(
+                archive, activity, sports, timezone, overrides, include_photos, include_indoor
+            )
             if config:
                 if (
                     prepared.recording
@@ -226,6 +243,9 @@ def run(
                 status = upload(client, journal, activity, prepared)
                 emit(f"{activity.external_id}: {status}")
             counts[status] += 1
+        except ExcludedActivity as exc:
+            counts["excluded"] += 1
+            emit(f"{activity.external_id}: excluded ({exc})")
         except ImportProblem as exc:
             counts["blocked"] += 1
             emit(f"{activity.external_id}: blocked ({exc})")

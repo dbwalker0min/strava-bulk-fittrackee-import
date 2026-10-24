@@ -45,6 +45,16 @@ def parser() -> argparse.ArgumentParser:
                 "--sport-map", type=Path, help="JSON object: Strava type to FitTrackee label"
             )
             sub.add_argument("--no-photos", action="store_true")
+            sub.add_argument(
+                "--include-indoor",
+                action="store_true",
+                help="Include explicitly indoor/virtual activities (excluded by default)",
+            )
+            sub.add_argument(
+                "--all-sports",
+                action="store_true",
+                help="Include non-cycling sports (cycling only by default)",
+            )
             sub.add_argument("--limit", type=int)
             sub.add_argument("--activity-id", action="append", default=[])
         elif name == "recover":
@@ -138,6 +148,8 @@ def execute(args: argparse.Namespace) -> int:
             timezone=timezone,
             overrides=overrides,
             include_photos=not args.no_photos,
+            include_indoor=args.include_indoor,
+            all_sports=args.all_sports,
             limit=args.limit,
             activity_ids=set(args.activity_id),
         )
