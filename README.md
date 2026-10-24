@@ -12,6 +12,10 @@ Development handoff: [PROJECT_STATUS.md](PROJECT_STATUS.md),
 [ARCHITECTURE.md](ARCHITECTURE.md), [CHANGELOG.md](CHANGELOG.md) and
 [AGENTS.md](AGENTS.md). Start with PROJECT_STATUS when continuing on another machine.
 
+The CLI uses [Typer](https://typer.tiangolo.com/) for typed commands, option
+validation and generated help. Run `strava-fittrackee --help` or
+`strava-fittrackee import --help` to inspect the interface.
+
 ## Install and inspect
 
 With [uv](https://docs.astral.sh/uv/):

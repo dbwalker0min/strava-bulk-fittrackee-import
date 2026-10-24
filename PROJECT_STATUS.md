@@ -15,9 +15,9 @@ Repository: https://github.com/dbwalker0min/strava-bulk-fittrackee-import
 - Development branch: `codex/initial-importer`.
 - [PR #1](https://github.com/dbwalker0min/strava-bulk-fittrackee-import/pull/1)
   targets `main` and was verified open when this handoff was written.
-- Baseline before the typing/progress refactor: `6dfb6b4`.
-- Current work adds explicit typing contracts, strict mypy and Rich progress on
-  the same branch/PR; consult Git history for the exact current revision.
+- Baseline before the Typer CLI refactor: `c754c58`.
+- Current work uses Typer commands/options with Rich progress on the same
+  branch/PR; consult Git history for the exact current revision.
 - Target contract: FitTrackee **1.3.6** plus the HA app's external identity API v1
   (app 0.1.2+). The client currently rejects other upstream versions.
 - The HA app/API and future incremental synchronizer are separate projects. Do
@@ -39,8 +39,10 @@ Repository: https://github.com/dbwalker0min/strava-bulk-fittrackee-import
   refresh during mutating commands. Client registration is still a manual UI step.
 - Private SQLite recovery journal, fenced claims, explicit known-workout recovery
   and operator-confirmed release. Uncertain native creation is never auto-retried.
+- Typer command signatures, generated help, option validation and typed command
+  values. Existing commands, flags, aliases and recovery choices are preserved.
 - Typed workout/credential/journal contracts, constrained states and outcomes,
-  typed CLI arguments, JSON boundary validation and strict mypy source checks.
+  JSON boundary validation and strict mypy source checks.
   Existing state JSON/SQLite formats remain compatible.
 - Rich terminal progress for imports/dryruns: selected/processed count, percentage,
   stage, elapsed time and ETA. Redirected output and `--no-progress` stay plain;
@@ -50,10 +52,11 @@ Repository: https://github.com/dbwalker0min/strava-bulk-fittrackee-import
 
 ## Verification and limits
 
-The typing/progress refactor passes **93 synthetic tests locally on Python 3.11
+The Typer/Rich CLI passes **113 synthetic tests locally on Python 3.11
 and 3.14**, Ruff lint/format, strict mypy (including Windows platform analysis) and
 wheel/sdist builds. Terminal and redirected-output CLI smoke checks used a generated
-archive. Added regression coverage verifies progress counting, interruption/early
+archive. Added regression coverage invokes public Typer commands and verifies flag/alias
+validation, recovery exclusivity before state access, progress counting, interruption/early
 stop cleanup, read-only behavior and legacy credential/journal compatibility.
 
 Historical CI baseline `cdd2ef0` passed 65 tests and all checks across Linux/Windows

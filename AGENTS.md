@@ -6,7 +6,8 @@ do not copy app deployment code or superseded PR #32 importer code into this pro
 
 Use Python 3.11+, explicit typing contracts and uv. Keep mypy strict; use the
 shared models/protocol for payloads, state and progress instead of broad Any
-annotations. Keep Rich presentation in progress.py and CLI, not the core importer. Checks: `uv run pytest -q`,
+annotations. Declare CLI commands/options with Typer and test them through
+CliRunner. Keep Rich presentation in progress.py and CLI, not the core importer. Checks: `uv run pytest -q`,
 `uv run ruff check src tests`, `uv run ruff format --check src tests`,
 `uv run mypy src`, `uv build`. CI uses generated fixtures only.
 

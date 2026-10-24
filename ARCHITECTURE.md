@@ -15,7 +15,7 @@ identity API v1. Upgrade compatibility requires explicit verification.
 
 | Module under `src/strava_bulk_import/` | Responsibility |
 | --- | --- |
-| `cli.py` | Arguments, resource lifecycle, login/import/refresh/recover commands, exit codes |
+| `cli.py` | Typer commands/options, typed command values, resource lifecycle and exit codes |
 | `archive.py` | Bounded ZIP/CSV reads, activity metadata, date/unit conversion, recording inspection, indoor signals, photos/captions |
 | `importer.py` | Scope filters, live sports/config preflight, identity lookups, upload/claim orchestration and recovery |
 | `client.py` | HTTPS origin checks, non-following redirects, Bearer requests, token refresh and atomic credential saving |
@@ -35,9 +35,17 @@ and Windows on Python 3.11 and 3.14.
 Source checks run in mypy strict mode. Workout metadata, OAuth credentials and
 journal entries use `typing.TypedDict`; optional wire fields use `NotRequired`.
 `Literal` types constrain HTTP methods, journal phases, outcomes and progress
-stages. Recording/photo tuples have shared type aliases. Argparse values have a
-typed namespace; recovery's single activity ID has a separate internal destination
-from import's repeatable activity selection.
+stages. Recording/photo tuples have shared type aliases.
+
+Typer derives command parameters, validation and help from annotated function
+signatures. Shared server/state option annotations keep the four commands
+consistent. Command functions pass a typed CommandOptions dataclass to the
+executor; recovery's single activity ID remains separate from import's repeatable
+selection. Recovery requires exactly one of workout binding or confirmed release,
+validated before credentials, locks or journals are opened. Error handling keeps
+established exit codes and sanitizes domain failures; Typer's pretty exception
+rendering is disabled so credentials/locals cannot appear in diagnostic panels.
+Tests invoke the public application through typer.testing.CliRunner.
 
 HTTP/JSON values enter as `object` and are validated before use. Journal reads
 check recovery fields before returning a typed entry; token reads/refresh validate

@@ -6,8 +6,9 @@ Initial 0.1.0 implementation; not yet published to PyPI.
 
 ### Added
 
-- `strava-fittrackee` Python package/CLI, with import, login, refresh and recovery
-  commands; Python 3.11+ support and uv-based development.
+- `strava-fittrackee` Python package/CLI, with Typer import, login, refresh and
+  recovery commands, annotated options and generated help; Python 3.11+ support
+  and uv-based development. Existing flag names and dryrun aliases are preserved.
 - Strava ZIP/CSV reading, GPX/FIT/TCX and gzip support, and normalization of leading
   whitespace before older XML declarations without modifying source archives.
 - Outdoor cycling defaults for both electric and non-electric rides; explicit
@@ -29,7 +30,7 @@ Initial 0.1.0 implementation; not yet published to PyPI.
 - Typed workout/credential/journal models, constrained states/outcomes and a
   progress protocol, with strict mypy source checks and JSON boundary validation.
   Existing saved credentials/journals need no migration.
-- 93 synthetic tests and Linux/Windows CI on Python 3.11 and 3.14.
+- 113 synthetic tests and Linux/Windows CI on Python 3.11 and 3.14.
 - Cross-machine handoff in PROJECT_STATUS.md, design in ARCHITECTURE.md and
   development guardrails in AGENTS.md.
 

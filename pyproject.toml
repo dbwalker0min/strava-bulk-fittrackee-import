@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [{name = "David Walker"}]
-dependencies = ["httpx>=0.28,<0.29", "defusedxml>=0.7,<0.8", "fitdecode>=0.11,<0.12", "tzdata>=2026.1", "rich>=14.1,<15"]
+dependencies = ["httpx>=0.28,<0.29", "defusedxml>=0.7,<0.8", "fitdecode>=0.11,<0.12", "tzdata>=2026.1", "rich>=14.1,<15", "typer>=0.16,<1"]
 
 [project.scripts]
 strava-fittrackee = "strava_bulk_import.cli:main"

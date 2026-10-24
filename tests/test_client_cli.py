@@ -6,9 +6,10 @@ from urllib.parse import parse_qs, urlsplit
 
 import httpx
 import pytest
+from typer.testing import CliRunner
 
 from strava_bulk_import.auth import authorization_url
-from strava_bulk_import.cli import execute, parser
+from strava_bulk_import.cli import app
 from strava_bulk_import.client import Client, ImportProblem, origin, save_private
 from strava_bulk_import.journal import RunLock
 
@@ -129,29 +130,32 @@ def test_pkce_authorization_url():
 
 def test_offline_dryrun_creates_no_state(tmp_path, archive):
     state = tmp_path / "never-created"
-    args = parser().parse_args(
-        ["import", str(archive.zip.filename), "--dryrun", "--state-dir", str(state)]
+    result = CliRunner().invoke(
+        app, ["import", str(archive.zip.filename), "--dryrun", "--state-dir", str(state)]
     )
-    assert execute(args) == 0
+    assert result.exit_code == 0, result.output
     assert not state.exists()
 
 
 def test_dryrun_does_not_change_export(tmp_path, archive):
     path = archive.zip.filename
     before = hashlib.sha256(open(path, "rb").read()).hexdigest()
-    assert execute(parser().parse_args(["import", str(path), "--dry-run"])) == 0
+    assert CliRunner().invoke(app, ["import", str(path), "--dry-run"]).exit_code == 0
     assert hashlib.sha256(open(path, "rb").read()).hexdigest() == before
 
 
 def test_limit_requires_positive(tmp_path, archive):
-    args = parser().parse_args(["import", str(archive.zip.filename), "--dryrun", "--limit", "0"])
-    with pytest.raises(ImportProblem, match="positive"):
-        execute(args)
+    result = CliRunner().invoke(
+        app, ["import", str(archive.zip.filename), "--dryrun", "--limit", "0"]
+    )
+    assert result.exit_code == 2
+    assert "--limit" in result.output
 
 
 def test_mutating_import_requires_server(archive):
-    with pytest.raises(ImportProblem, match="server"):
-        execute(parser().parse_args(["import", str(archive.zip.filename)]))
+    result = CliRunner().invoke(app, ["import", str(archive.zip.filename)])
+    assert result.exit_code == 2
+    assert "--server is required" in result.output
 
 
 def test_run_lock_released_on_close(tmp_path):

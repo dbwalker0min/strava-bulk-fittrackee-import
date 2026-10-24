@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-import argparse
 import json
 import sqlite3
 import sys
 import zipfile
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal, TypeAlias
 from urllib.parse import quote
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
+import typer
 
 from .archive import Archive
 from .auth import login
@@ -23,11 +24,27 @@ from .journal import Journal, RunLock
 from .models import object_value, string_value
 from .progress import RichReporter
 
+app = typer.Typer(
+    help="Import outdoor cycling history from a Strava export into FitTrackee.",
+    add_completion=False,
+    no_args_is_help=True,
+    pretty_exceptions_enable=False,
+)
 
-class Arguments(argparse.Namespace):
+Server: TypeAlias = Annotated[str, typer.Option("--server", help="FitTrackee HTTPS origin")]
+StateDirectory: TypeAlias = Annotated[
+    Path, typer.Option("--state-dir", help="Private credentials and recovery journal directory")
+]
+DEFAULT_STATE = Path.home() / ".strava-fittrackee"
+
+
+@dataclass(frozen=True, kw_only=True)
+class CommandOptions:
+    """Validated Typer values passed to the command executor."""
+
     command: Literal["import", "login", "refresh", "recover"]
+    state_dir: Path = field(default_factory=lambda: DEFAULT_STATE)
     server: str | None = None
-    state_dir: Path
     archive: Path | None = None
     client_id: str = ""
     port: int = 8765
@@ -39,70 +56,119 @@ class Arguments(argparse.Namespace):
     include_indoor: bool = False
     all_sports: bool = False
     limit: int | None = None
-    activity_id: list[str]
+    activity_id: list[str] = field(default_factory=list)
     recovery_activity_id: str = ""
     workout_id: str | None = None
     confirm_no_upload: bool = False
 
 
-def parser() -> argparse.ArgumentParser:
-    root = argparse.ArgumentParser(prog="strava-fittrackee")
-    commands = root.add_subparsers(dest="command", required=True)
-    for name in ("import", "login", "refresh", "recover"):
-        sub = commands.add_parser(name)
-        sub.add_argument("--server", required=name != "import", help="FitTrackee HTTPS origin")
-        sub.add_argument(
-            "--state-dir",
-            type=Path,
-            default=Path.home() / ".strava-fittrackee",
-            help="Private credentials and recovery journal directory",
+@app.command("import")
+def import_archive(
+    archive: Annotated[Path, typer.Argument(help="Strava account export ZIP")],
+    server: Annotated[str | None, typer.Option("--server", help="FitTrackee HTTPS origin")] = None,
+    state_dir: StateDirectory = DEFAULT_STATE,
+    dryrun: Annotated[
+        bool, typer.Option("--dryrun", "--dry-run", help="Inspect without mutations")
+    ] = False,
+    no_progress: Annotated[
+        bool, typer.Option("--no-progress", help="Disable terminal progress")
+    ] = False,
+    timezone: Annotated[
+        str | None, typer.Option("--timezone", help="Offline target timezone")
+    ] = None,
+    sport_map: Annotated[
+        Path | None, typer.Option("--sport-map", help="JSON sport label mappings")
+    ] = None,
+    no_photos: Annotated[bool, typer.Option("--no-photos", help="Omit photo attachments")] = False,
+    include_indoor: Annotated[
+        bool, typer.Option("--include-indoor", help="Include indoor/virtual activities")
+    ] = False,
+    all_sports: Annotated[
+        bool, typer.Option("--all-sports", help="Include non-cycling sports")
+    ] = False,
+    limit: Annotated[
+        int | None, typer.Option("--limit", min=1, help="Process the first N selected rows")
+    ] = None,
+    activity_id: Annotated[
+        list[str] | None, typer.Option("--activity-id", help="Select an ID; repeat to select more")
+    ] = None,
+) -> None:
+    """Inspect or import an archive; outdoor electric/non-electric cycling is the default."""
+    invoke(
+        CommandOptions(
+            command="import",
+            archive=archive,
+            server=server,
+            state_dir=state_dir,
+            dryrun=dryrun,
+            no_progress=no_progress,
+            timezone=timezone,
+            sport_map=sport_map,
+            no_photos=no_photos,
+            include_indoor=include_indoor,
+            all_sports=all_sports,
+            limit=limit,
+            activity_id=activity_id or [],
         )
-        if name == "login":
-            sub.add_argument("--client-id", required=True)
-            sub.add_argument("--port", type=int, default=8765)
-        elif name == "import":
-            sub.add_argument("archive", type=Path)
-            sub.add_argument("--dryrun", "--dry-run", action="store_true")
-            sub.add_argument(
-                "--no-progress",
-                action="store_true",
-                help="Disable the terminal progress bar (logs remain available)",
-            )
-            sub.add_argument(
-                "--timezone", help="Offline dryrun target timezone; online uses profile"
-            )
-            sub.add_argument(
-                "--sport-map", type=Path, help="JSON object: Strava type to FitTrackee label"
-            )
-            sub.add_argument("--no-photos", action="store_true")
-            sub.add_argument(
-                "--include-indoor",
-                action="store_true",
-                help="Include explicitly indoor/virtual activities (excluded by default)",
-            )
-            sub.add_argument(
-                "--all-sports",
-                action="store_true",
-                help="Include non-cycling sports (cycling only by default)",
-            )
-            sub.add_argument("--limit", type=int)
-            sub.add_argument("--activity-id", action="append", default=[])
-        elif name == "recover":
-            sub.add_argument("--activity-id", dest="recovery_activity_id", required=True)
-            recovery = sub.add_mutually_exclusive_group(required=True)
-            recovery.add_argument(
-                "--workout-id",
-                help="Verified native workout ID from the uncertain upload",
-            )
-            recovery.add_argument(
-                "--confirm-no-upload",
-                action="store_true",
-                help="Release only after confirming no earlier upload can complete",
-            )
-    return root
+    )
 
 
-def execute(args: Arguments) -> int:
+@app.command("login")
+def login_command(
+    server: Server,
+    client_id: Annotated[
+        str, typer.Option("--client-id", help="Registered FitTrackee OAuth client ID")
+    ],
+    state_dir: StateDirectory = DEFAULT_STATE,
+    port: Annotated[
+        int, typer.Option("--port", min=1, max=65535, help="Loopback callback port")
+    ] = 8765,
+) -> None:
+    """Authorize in a browser; the client secret is prompted privately."""
+    invoke(
+        CommandOptions(
+            command="login", server=server, client_id=client_id, state_dir=state_dir, port=port
+        )
+    )
+
+
+@app.command("refresh")
+def refresh_command(server: Server, state_dir: StateDirectory = DEFAULT_STATE) -> None:
+    """Refresh saved OAuth credentials without importing activities."""
+    invoke(CommandOptions(command="refresh", server=server, state_dir=state_dir))
+
+
+@app.command("recover")
+def recover_command(
+    server: Server,
+    activity_id: Annotated[str, typer.Option("--activity-id", help="Exact Strava activity ID")],
+    state_dir: StateDirectory = DEFAULT_STATE,
+    workout_id: Annotated[
+        str | None, typer.Option("--workout-id", help="Verified existing native workout ID")
+    ] = None,
+    confirm_no_upload: Annotated[
+        bool,
+        typer.Option(
+            "--confirm-no-upload", help="Confirm no earlier upload exists or can complete"
+        ),
+    ] = False,
+) -> None:
+    """Bind a verified workout, or explicitly release a reconciled claim."""
+    if (workout_id is not None) == confirm_no_upload:
+        raise typer.BadParameter("Choose exactly one of --workout-id or --confirm-no-upload")
+    invoke(
+        CommandOptions(
+            command="recover",
+            server=server,
+            state_dir=state_dir,
+            recovery_activity_id=activity_id,
+            workout_id=workout_id,
+            confirm_no_upload=confirm_no_upload,
+        )
+    )
+
+
+def execute(args: CommandOptions) -> int:
     credentials = args.state_dir / "credentials.json"
     client, journal, archive, lock = None, None, None, None
     try:
@@ -125,11 +191,10 @@ def execute(args: Arguments) -> int:
                 )
             assert args.archive is not None
             archive = Archive(args.archive)
-        timezone = getattr(args, "timezone", None) or "UTC"
+        timezone = args.timezone or "UTC"
         ZoneInfo(timezone)
         overrides: dict[str, str] = {}
-        if getattr(args, "sport_map", None):
-            assert args.sport_map is not None
+        if args.sport_map:
             overrides = {
                 key: string_value(value)
                 for key, value in object_value(json.loads(args.sport_map.read_text())).items()
@@ -197,8 +262,7 @@ def execute(args: Arguments) -> int:
                 resource.close()
 
 
-def main() -> None:
-    args = parser().parse_args(namespace=Arguments())
+def invoke(args: CommandOptions) -> None:
     try:
         code = execute(args)
     except (
@@ -226,4 +290,8 @@ def main() -> None:
     except KeyboardInterrupt:
         print("Interrupted. The journal preserves recovery state.", file=sys.stderr)
         code = 130
-    raise SystemExit(code)
+    raise typer.Exit(code)
+
+
+def main() -> None:
+    app(prog_name="strava-fittrackee")

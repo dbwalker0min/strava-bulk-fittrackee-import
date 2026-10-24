@@ -81,8 +81,9 @@ def test_corrupt_credentials_do_not_expose_secret(tmp_path):
 def test_cli_recovery_keeps_single_activity_id_and_existing_journal(
     client, server, tmp_path, monkeypatch, release
 ):
+    from typer.testing import CliRunner
+
     from strava_bulk_import import cli
-    from strava_bulk_import.cli import Arguments
 
     state = tmp_path / "state"
     namespace = "https://fit.example|synthetic|today"
@@ -101,7 +102,8 @@ def test_cli_recovery_keeps_single_activity_id_and_existing_journal(
     monkeypatch.setattr(client, "request", request)
     monkeypatch.setattr(cli, "Client", lambda *args, **kwargs: client)
     options = ["--confirm-no-upload"] if release else ["--workout-id", "native1"]
-    args = cli.parser().parse_args(
+    result = CliRunner().invoke(
+        cli.app,
         [
             "recover",
             "--server",
@@ -112,9 +114,8 @@ def test_cli_recovery_keeps_single_activity_id_and_existing_journal(
             "001",
             *options,
         ],
-        namespace=Arguments(),
     )
-    assert cli.execute(args) == 0
+    assert result.exit_code == 0, result.output
     journal = Journal(state / "journal.sqlite3", namespace)
     saved = journal.get("001")
     if release:

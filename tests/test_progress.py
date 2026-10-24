@@ -6,8 +6,9 @@ import sys
 
 import pytest
 from rich.console import Console
+from typer.testing import CliRunner
 
-from strava_bulk_import.cli import Arguments, execute, parser
+from strava_bulk_import.cli import app
 from strava_bulk_import.client import APIError
 from strava_bulk_import.importer import run
 from strava_bulk_import.journal import Journal
@@ -236,7 +237,8 @@ def test_no_progress_overrides_terminal(monkeypatch, capsys):
 
 def test_cli_progress_switch_keeps_dryrun_readonly(tmp_path, archive, capsys):
     state = tmp_path / "no-state"
-    args = parser().parse_args(
+    result = CliRunner().invoke(
+        app,
         [
             "import",
             str(archive.zip.filename),
@@ -245,12 +247,10 @@ def test_cli_progress_switch_keeps_dryrun_readonly(tmp_path, archive, capsys):
             "--state-dir",
             str(state),
         ],
-        namespace=Arguments(),
     )
-    assert execute(args) == 0
-    output = capsys.readouterr()
-    assert "candidate" in output.out and "Summary:" in output.out
-    assert "\x1b[" not in output.out + output.err
+    assert result.exit_code == 0, result.output
+    assert "candidate" in result.output and "Summary:" in result.output
+    assert "\x1b[" not in result.output
     assert not state.exists()
 
 
