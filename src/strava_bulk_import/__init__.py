@@ -1,2 +1,1 @@
-def main() -> None:
-    print("Hello from strava-bulk-import!")
+"""Import Strava exports through FitTrackee's native and companion APIs."""

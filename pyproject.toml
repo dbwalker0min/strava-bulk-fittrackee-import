@@ -1,17 +1,35 @@
 [project]
-name = "strava-bulk-fittrackee-import"
+name = "strava-fittrackee"
 version = "0.1.0"
-description = "Add your description here"
+description = "Resumable Strava export importer for FitTrackee"
 readme = "README.md"
-authors = [
-    { name = "David Walker", email = "dbwalker0min@gmail.com" }
-]
-requires-python = ">=3.14"
-dependencies = []
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{name = "David Walker"}]
+dependencies = ["httpx>=0.28,<0.29", "defusedxml>=0.7,<0.8", "fitdecode>=0.11,<0.12", "tzdata>=2026.1"]
 
 [project.scripts]
-strava-bulk-import = "strava_bulk_import:main"
+strava-fittrackee = "strava_bulk_import.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "ruff>=0.14", "mypy>=1.18"]
 
 [build-system]
 requires = ["uv_build>=0.11.16,<0.12.0"]
 build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "strava_bulk_import"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+check_untyped_defs = true
