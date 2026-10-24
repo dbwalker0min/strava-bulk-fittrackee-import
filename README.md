@@ -8,6 +8,10 @@ Initial release targets **FitTrackee 1.3.6 with the Home Assistant app's externa
 identity API v1 (app 0.1.2+)**. It is not compatible with an unextended upstream
 FitTrackee installation. No direct database access or Strava API access is used.
 
+Development handoff: [PROJECT_STATUS.md](PROJECT_STATUS.md),
+[ARCHITECTURE.md](ARCHITECTURE.md), [CHANGELOG.md](CHANGELOG.md) and
+[AGENTS.md](AGENTS.md). Start with PROJECT_STATUS when continuing on another machine.
+
 ## Install and inspect
 
 With [uv](https://docs.astral.sh/uv/):

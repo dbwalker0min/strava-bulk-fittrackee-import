@@ -22,5 +22,10 @@ Never retry native creation after an uncertain result. Never auto-release an
 uploading claim. Operator recovery must be explicit and journaled. Keep the target
 origin/account boundary and refuse HTTP/redirect credential forwarding.
 
-Maintain README.md with actual verification and known upstream limits. Local unit
-checks are not live FitTrackee/HA verification. Keep scope within this repository.
+Read PROJECT_STATUS.md, ARCHITECTURE.md and CHANGELOG.md before continuing.
+Maintain PROJECT_STATUS.md after meaningful work with current verification, open
+issues and portable next steps. Record design changes in ARCHITECTURE.md and
+user-facing changes in CHANGELOG.md; keep README.md aligned with actual behavior.
+Use repository-relative commands and links so handoffs work across macOS/Windows.
+Local unit checks are not live FitTrackee/HA verification. Keep scope within this
+repository.
