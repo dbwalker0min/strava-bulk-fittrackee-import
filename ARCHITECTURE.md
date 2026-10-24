@@ -21,11 +21,30 @@ identity API v1. Upgrade compatibility requires explicit verification.
 | `client.py` | HTTPS origin checks, non-following redirects, Bearer requests, token refresh and atomic credential saving |
 | `auth.py` | Browser consent, random OAuth state, PKCE S256, loopback callback and code exchange |
 | `journal.py` | SQLite persistence and local OS file lock |
+| `models.py` | TypedDict payload/credential/journal contracts, Literal states, aliases, JSON validation and progress protocol |
+| `errors.py` | Shared domain errors and intentional exclusion type |
+| `progress.py` | Rich presentation and terminal/redirect handling |
 | `__main__.py` | Module execution entry point |
 
 Tests use synthetic archives, valid generated FIT messages and an HTTP transport
 double. They do not require a private export or credentials. CI validates Linux
 and Windows on Python 3.11 and 3.14.
+
+## Type contracts
+
+Source checks run in mypy strict mode. Workout metadata, OAuth credentials and
+journal entries use `typing.TypedDict`; optional wire fields use `NotRequired`.
+`Literal` types constrain HTTP methods, journal phases, outcomes and progress
+stages. Recording/photo tuples have shared type aliases. Argparse values have a
+typed namespace; recovery's single activity ID has a separate internal destination
+from import's repeatable activity selection.
+
+HTTP/JSON values enter as `object` and are validated before use. Journal reads
+check recovery fields before returning a typed entry; token reads/refresh validate
+strings and finite numeric expiry values. State still serializes with the original
+JSON keys and SQLite layout. These annotations do not require moving existing
+credentials or journals. The untyped XML/FIT libraries are isolated at their import
+boundaries; domain code does not use unrestricted `Any` dictionaries.
 
 ## Selection and preflight
 
@@ -99,6 +118,27 @@ POSIX state directories/files use 0700/0600 permissions; Windows relies on the
 user's directory ACLs. Tokens rotate on refresh. Moving unfinished work requires
 securely transferring the stopped client's complete journal/state, not just the
 source checkout. See [PROJECT_STATUS.md](PROJECT_STATUS.md) for the portable handoff.
+
+## Progress presentation
+
+The core importer accepts an optional `ProgressReporter` protocol and has no Rich
+or terminal dependency. The CLI owns a RichReporter context manager and passes
+its hooks to the importer. Selected IDs and `--limit` determine the total. Each
+completed outcome advances once, including skip/exclusion/blocked paths; an
+interrupted in-progress activity does not advance. API early stops leave remaining
+rows unprocessed. Progress callbacks never authorize an upload or replace the
+journal; claim/recovery ordering remains authoritative.
+
+Stage events cover selection, identity checks, file inspection, claiming, photo
+upload, native workout creation and binding. Rich displays count/percentage,
+elapsed time, ETA and current ID/stage. The context manager stops the live display
+on exceptions and leaves actual completion visible instead of forcing 100%.
+
+Interactive display/messages use stderr and the final summary uses stdout.
+Redirecting either stream disables the bar, preserving plain per-activity stdout
+logs with immediate flushing. `--no-progress` forces plain reporting. Rich markup
+is disabled for activity messages so external text is rendered literally. Tests
+exercise terminal and nonterminal paths without personal data or network access.
 
 ## Dryrun and reporting
 

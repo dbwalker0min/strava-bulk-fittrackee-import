@@ -8,16 +8,41 @@ import sqlite3
 import sys
 import zipfile
 from pathlib import Path
+from typing import Literal
 from urllib.parse import quote
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
 
-from .archive import Archive, ImportProblem
+from .archive import Archive
 from .auth import login
 from .client import Client, origin
+from .errors import ImportProblem
 from .importer import PREFIX, bind, profile, release_confirmed, run
 from .journal import Journal, RunLock
+from .models import object_value, string_value
+from .progress import RichReporter
+
+
+class Arguments(argparse.Namespace):
+    command: Literal["import", "login", "refresh", "recover"]
+    server: str | None = None
+    state_dir: Path
+    archive: Path | None = None
+    client_id: str = ""
+    port: int = 8765
+    dryrun: bool = False
+    no_progress: bool = False
+    timezone: str | None = None
+    sport_map: Path | None = None
+    no_photos: bool = False
+    include_indoor: bool = False
+    all_sports: bool = False
+    limit: int | None = None
+    activity_id: list[str]
+    recovery_activity_id: str = ""
+    workout_id: str | None = None
+    confirm_no_upload: bool = False
 
 
 def parser() -> argparse.ArgumentParser:
@@ -39,6 +64,11 @@ def parser() -> argparse.ArgumentParser:
             sub.add_argument("archive", type=Path)
             sub.add_argument("--dryrun", "--dry-run", action="store_true")
             sub.add_argument(
+                "--no-progress",
+                action="store_true",
+                help="Disable the terminal progress bar (logs remain available)",
+            )
+            sub.add_argument(
                 "--timezone", help="Offline dryrun target timezone; online uses profile"
             )
             sub.add_argument(
@@ -58,7 +88,7 @@ def parser() -> argparse.ArgumentParser:
             sub.add_argument("--limit", type=int)
             sub.add_argument("--activity-id", action="append", default=[])
         elif name == "recover":
-            sub.add_argument("--activity-id", required=True)
+            sub.add_argument("--activity-id", dest="recovery_activity_id", required=True)
             recovery = sub.add_mutually_exclusive_group(required=True)
             recovery.add_argument(
                 "--workout-id",
@@ -72,11 +102,12 @@ def parser() -> argparse.ArgumentParser:
     return root
 
 
-def execute(args: argparse.Namespace) -> int:
+def execute(args: Arguments) -> int:
     credentials = args.state_dir / "credentials.json"
     client, journal, archive, lock = None, None, None, None
     try:
         if args.command == "login":
+            assert args.server is not None
             lock = RunLock(args.state_dir)
             login(args.server, credentials, args.client_id, args.port)
             return 0
@@ -92,16 +123,17 @@ def execute(args: argparse.Namespace) -> int:
                 raise ImportProblem(
                     "Online imports use the target profile timezone; omit --timezone"
                 )
+            assert args.archive is not None
             archive = Archive(args.archive)
         timezone = getattr(args, "timezone", None) or "UTC"
         ZoneInfo(timezone)
-        overrides = {}
+        overrides: dict[str, str] = {}
         if getattr(args, "sport_map", None):
-            overrides = json.loads(args.sport_map.read_text())
-            if not isinstance(overrides, dict) or not all(
-                isinstance(k, str) and isinstance(v, str) for k, v in overrides.items()
-            ):
-                raise ImportProblem("Sport map must be a JSON object of string labels")
+            assert args.sport_map is not None
+            overrides = {
+                key: string_value(value)
+                for key, value in object_value(json.loads(args.sport_map.read_text())).items()
+            }
         if args.server:
             server = origin(args.server)
             if not readonly:
@@ -117,13 +149,14 @@ def execute(args: argparse.Namespace) -> int:
                 journal = Journal(args.state_dir / "journal.sqlite3", namespace)
         if args.command == "recover":
             assert journal is not None and client is not None
-            entry = journal.get(args.activity_id)
+            entry = journal.get(args.recovery_activity_id)
             if not entry:
                 raise ImportProblem("No local claim journal exists for this account/activity")
             if args.confirm_no_upload:
-                release_confirmed(client, journal, args.activity_id)
+                release_confirmed(client, journal, args.recovery_activity_id)
                 print("Claim released. Inspect orphan media before retrying the activity.")
                 return 0
+            assert args.workout_id is not None
             if entry.get("workout_id") and entry["workout_id"] != args.workout_id:
                 raise ImportProblem("Workout ID conflicts with the journal")
             # Registration checks actual native ownership, even for public workouts.
@@ -132,27 +165,30 @@ def execute(args: argparse.Namespace) -> int:
                 PREFIX + "/workouts/" + quote(args.workout_id, safe="") + "/identities",
             )
             entry["workout_id"] = args.workout_id
-            journal.save(args.activity_id, entry)
-            bind(client, journal, args.activity_id, entry)
+            journal.save(args.recovery_activity_id, entry)
+            bind(client, journal, args.recovery_activity_id, entry)
             print("Identity bound to the supplied workout. Future imports skip it.")
             return 0
         assert archive is not None
         if not client:
             print("Offline dryrun: identities and target sport availability are unverified.")
             print("Manual date preview timezone: " + timezone)
-        counts = run(
-            archive,
-            client=client,
-            journal=journal,
-            dryrun=args.dryrun,
-            timezone=timezone,
-            overrides=overrides,
-            include_photos=not args.no_photos,
-            include_indoor=args.include_indoor,
-            all_sports=args.all_sports,
-            limit=args.limit,
-            activity_ids=set(args.activity_id),
-        )
+        with RichReporter(dryrun=args.dryrun, enabled=not args.no_progress) as reporter:
+            counts = run(
+                archive,
+                client=client,
+                journal=journal,
+                dryrun=args.dryrun,
+                timezone=timezone,
+                overrides=overrides,
+                include_photos=not args.no_photos,
+                include_indoor=args.include_indoor,
+                all_sports=args.all_sports,
+                limit=args.limit,
+                activity_ids=set(args.activity_id),
+                emit=reporter.emit,
+                progress=reporter,
+            )
         print("Summary: " + json.dumps(dict(sorted(counts.items()))))
         return 1 if counts["blocked"] else 0
     finally:
@@ -162,7 +198,7 @@ def execute(args: argparse.Namespace) -> int:
 
 
 def main() -> None:
-    args = parser().parse_args()
+    args = parser().parse_args(namespace=Arguments())
     try:
         code = execute(args)
     except (

@@ -7,14 +7,14 @@ import os
 import sqlite3
 import sys
 from pathlib import Path
-from typing import Any
 
-from .archive import ImportProblem
 from .client import private_dir
+from .errors import ImportProblem
+from .models import JournalEntry, journal_entry
 
 
 class Journal:
-    def __init__(self, path: Path, namespace: str):
+    def __init__(self, path: Path, namespace: str) -> None:
         private_dir(path.parent)
         self.db = sqlite3.connect(path, timeout=5)
         if os.name != "nt":
@@ -30,14 +30,14 @@ class Journal:
     def close(self) -> None:
         self.db.close()
 
-    def get(self, external_id: str) -> dict[str, Any] | None:
+    def get(self, external_id: str) -> JournalEntry | None:
         row = self.db.execute(
             "SELECT data FROM entries WHERE namespace=? AND external_id=?",
             (self.namespace, external_id),
         ).fetchone()
-        return json.loads(row[0]) if row else None
+        return journal_entry(json.loads(row[0])) if row else None
 
-    def save(self, external_id: str, data: dict[str, Any]) -> None:
+    def save(self, external_id: str, data: JournalEntry) -> None:
         with self.db:
             self.db.execute(
                 "INSERT INTO entries VALUES (?, ?, ?) ON CONFLICT(namespace, external_id) "
@@ -49,7 +49,7 @@ class Journal:
 class RunLock:
     """OS advisory lock, released even if the process crashes; shared by login/import/recovery."""
 
-    def __init__(self, directory: Path):
+    def __init__(self, directory: Path) -> None:
         private_dir(directory)
         self.handle = (directory / "run.lock").open("a+b")
         self.handle.write(b"\0")

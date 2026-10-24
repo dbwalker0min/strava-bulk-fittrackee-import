@@ -33,6 +33,22 @@ are created. An expired token requires a separate `refresh` or `login` command.
 Claims cannot be inspected without a mutation; an unbound identity in a dryrun is
 a candidate, not a guarantee that another client has no outstanding claim.
 
+Interactive imports and dryruns show a Rich progress bar with processed/selected
+activities, percentage, current stage, elapsed time and estimated time remaining.
+The count includes candidates, imports, identity skips, scope exclusions and
+blockers. It counts processed activities, not successful uploads. Interrupted or
+early-stopped runs keep their actual partial count. ETA is an estimate because
+recording sizes and upload times vary.
+
+The live display and per-activity messages use stderr in interactive terminals;
+the final summary stays on stdout. If either output stream is redirected, the
+bar turns off and per-activity stdout logs stay plain and flush immediately.
+`--no-progress` disables the bar explicitly:
+
+```sh
+uv run strava-fittrackee import data/strava-export.zip --dryrun --no-progress
+```
+
 Output contains activity IDs and status, not titles, descriptions, GPS or tokens.
 Exit status: `0` no blockers, `1` one or more activities blocked, `2` configuration,
 archive or operational error, `130` interrupted. Blocked activities are not silently
@@ -193,6 +209,12 @@ uv run ruff format --check src tests
 uv run mypy src
 uv build
 ```
+
+Source code uses strict mypy checks, `TypedDict` models for workout payloads,
+credentials and journal entries, `Literal` states/outcomes, shared type aliases
+and a `ProgressReporter` protocol. JSON boundaries validate inputs before exposing
+typed values. Existing credential/journal JSON remains compatible; no state
+migration is needed.
 
 Tests use synthetic exports and an HTTP transport double to verify API payloads,
 read-only behavior, token refresh, claims and lost-response recovery. CI runs on

@@ -11,10 +11,12 @@ import zipfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
-from typing import Any
 from zoneinfo import ZoneInfo
 
 from defusedxml import ElementTree  # type: ignore[import-untyped]
+
+from .errors import ExcludedActivity, ImportProblem
+from .models import Photo, Recording, WorkoutMetadata
 
 MAX_MEMBER = 64 * 1024 * 1024
 MAX_CSV = 32 * 1024 * 1024
@@ -55,14 +57,6 @@ RIDE_TYPES = frozenset(
         "Indoor Ride",
     }
 )
-
-
-class ImportProblem(Exception):
-    """A safe, user-facing explanation without credentials or response bodies."""
-
-
-class ExcludedActivity(ImportProblem):
-    """An intentional scope exclusion, counted separately from invalid input."""
 
 
 def indoor_reason(activity: Activity) -> str | None:
@@ -133,8 +127,8 @@ class Activity:
     def recording(self) -> str:
         return self.row.get("Filename", "").strip()
 
-    def metadata(self, sport_id: int) -> dict[str, Any]:
-        return dict(
+    def metadata(self, sport_id: int) -> WorkoutMetadata:
+        return WorkoutMetadata(
             sport_id=sport_id,
             title=self.row.get("Activity Name", ""),
             description=self.row.get("Activity Description", ""),
@@ -144,7 +138,7 @@ class Activity:
             media_visibility="private",
         )
 
-    def manual(self, sport_id: int, target_timezone: str) -> dict[str, Any]:
+    def manual(self, sport_id: int, target_timezone: str) -> WorkoutMetadata:
         result = self.metadata(sport_id)
         distance = number(self.row.get("Distance", ""), "distance") / 1000
         duration = int(
@@ -158,14 +152,14 @@ class Activity:
         # Endpoint has minute precision and cannot disambiguate the repeated DST hour.
         if local.replace(fold=0).utcoffset() != local.replace(fold=1).utcoffset():
             raise ImportProblem("Manual workout falls in ambiguous DST hour")
-        result.update(
-            distance=distance, duration=duration, workout_date=local.strftime("%Y-%m-%d %H:%M")
-        )
+        result["distance"] = distance
+        result["duration"] = duration
+        result["workout_date"] = local.strftime("%Y-%m-%d %H:%M")
         return result
 
 
 class Archive:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path) -> None:
         self.zip = zipfile.ZipFile(path)
         names = self.zip.namelist()
         if len(names) != len(set(names)):
@@ -215,9 +209,7 @@ class Archive:
     def csv(self, name: str) -> list[dict[str, str]]:
         return list(csv.DictReader(io.StringIO(self.read(name, MAX_CSV).decode("utf-8-sig"))))
 
-    def recording(
-        self, activity: Activity, *, include_indoor: bool = True
-    ) -> tuple[str, bytes] | None:
+    def recording(self, activity: Activity, *, include_indoor: bool = True) -> Recording | None:
         name = activity.recording
         if not name:
             return None
@@ -244,7 +236,7 @@ class Archive:
             return None
         return "recording" + extension, data
 
-    def photos(self, activity: Activity) -> list[tuple[str, bytes, str]]:
+    def photos(self, activity: Activity) -> list[Photo]:
         if len(activity.media) > 20:
             raise ImportProblem("More than 20 media attachments")
         result = []

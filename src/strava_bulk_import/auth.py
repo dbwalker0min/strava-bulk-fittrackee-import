@@ -10,13 +10,13 @@ import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Any
 from urllib.parse import parse_qs, urlencode, urlsplit
 
 import httpx
 
-from .archive import ImportProblem
 from .client import origin, save_private, update_tokens
+from .errors import ImportProblem
+from .models import OAuthClientCredentials
 
 SCOPES = "profile:read workouts:read workouts:write media:write"
 
@@ -51,7 +51,7 @@ def login(base: str, credentials: Path, client_id: str, port: int) -> None:
     callback: dict[str, str] = {}
 
     class Handler(BaseHTTPRequestHandler):
-        def log_message(self, format: str, *args: Any) -> None:
+        def log_message(self, format: str, *args: object) -> None:
             pass  # Authorization codes must never enter logs.
 
         def do_GET(self) -> None:
@@ -99,7 +99,9 @@ def login(base: str, credentials: Path, client_id: str, port: int) -> None:
         )
     if response.status_code != 200:
         raise ImportProblem("OAuth exchange rejected; check client settings and log in again")
-    auth = dict(server=base, client_id=client_id, client_secret=secret)
-    update_tokens(auth, response.json())
+    registration: OAuthClientCredentials = dict(
+        server=base, client_id=client_id, client_secret=secret
+    )
+    auth = update_tokens(registration, response.json())
     save_private(credentials, auth)
     print("Login saved. Credentials refresh automatically during imports.")

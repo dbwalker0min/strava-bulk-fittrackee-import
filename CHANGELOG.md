@@ -23,7 +23,13 @@ Initial 0.1.0 implementation; not yet published to PyPI.
   and explicit operator recovery without automatic uncertain-upload retries.
 - Target-version/upload-size preflight, active sport-label mapping, exact activity
   selection and import limits.
-- 65 synthetic tests and Linux/Windows CI on Python 3.11 and 3.14.
+- Rich terminal progress for imports/dryruns, including selected/processed count,
+  percentage, current stage, elapsed time and ETA. `--no-progress` and redirected
+  output retain plain logs; early stops/interruption retain partial completion.
+- Typed workout/credential/journal models, constrained states/outcomes and a
+  progress protocol, with strict mypy source checks and JSON boundary validation.
+  Existing saved credentials/journals need no migration.
+- 93 synthetic tests and Linux/Windows CI on Python 3.11 and 3.14.
 - Cross-machine handoff in PROJECT_STATUS.md, design in ARCHITECTURE.md and
   development guardrails in AGENTS.md.
 
