@@ -1,8 +1,8 @@
 # strava-fittrackee
 
 Import a Strava account export ZIP into FitTrackee using its HTTPS APIs. The Python
-package and command are `strava-fittrackee`; this repository retains its original
-`strava-bulk-fittrackee-import` name. Requires Python 3.11 or newer.
+package, command and repository are `strava-fittrackee`. The Python import module
+is `strava_fittrackee` (Python uses underscores). Requires Python 3.11 or newer.
 
 Initial release targets **FitTrackee 1.3.6 with the Home Assistant app's external
 identity API v1 (app 0.1.2+)**. It is not compatible with an unextended upstream

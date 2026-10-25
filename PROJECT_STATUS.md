@@ -1,6 +1,6 @@
 # Project status
 
-Updated: 2026-10-23 (America/Los_Angeles).
+Updated: 2026-10-24 (America/Los_Angeles).
 
 ## Purpose and decisions
 
@@ -8,12 +8,12 @@ Build a history of **outdoor cycling rides, electric and non-electric**, to help
 plan future rides. Indoor/virtual cycling and non-cycling activities are excluded
 by default. An absent recording or GPS track does not prove a ride was indoors.
 
-Repository: https://github.com/dbwalker0min/strava-bulk-fittrackee-import
+Repository: https://github.com/dbwalker0min/strava-fittrackee
 
-- Package/command: `strava-fittrackee`; Python module: `strava_bulk_import`.
+- Package/command: `strava-fittrackee`; Python module: `strava_fittrackee`.
 - Initial version: 0.1.0 in development, not published to PyPI.
 - Development branch: `codex/initial-importer`.
-- [PR #1](https://github.com/dbwalker0min/strava-bulk-fittrackee-import/pull/1)
+- [PR #1](https://github.com/dbwalker0min/strava-fittrackee/pull/1)
   targets `main` and was verified open when this handoff was written.
 - Baseline before the Typer CLI refactor: `c754c58`.
 - Current work uses Typer commands/options with Rich progress on the same
@@ -49,6 +49,23 @@ Repository: https://github.com/dbwalker0min/strava-bulk-fittrackee-import
   interrupts/early stops never force completion.
 - Linux/Windows CI on Python 3.11 and 3.14, plus development instructions in
   [AGENTS.md](AGENTS.md) and user commands in [README.md](README.md).
+
+## Naming update (2026-10-24)
+
+Repository, distribution and command use `strava-fittrackee`. The intended
+checkout folder name is also `strava-fittrackee`, but Windows denied renaming
+the existing local `strava-bulk-fittrackee-import` folder. Close processes using
+that checkout, rename it to `strava-fittrackee` and reopen the project. Recreate
+the ignored `.venv` with `uv venv --clear` and `uv sync --locked --dev` after
+moving the checkout so installed command paths use the new location.
+The source package uses `src/strava_fittrackee/` and Python imports use
+`strava_fittrackee` because Python identifiers cannot contain hyphens. The old
+`strava_bulk_import` module name is removed; update external Python imports.
+Existing credentials/journals and CLI commands are unchanged.
+
+Verified locally on Python 3.14: 113 synthetic tests, Ruff lint/format, strict
+mypy, wheel/sdist builds and both command/module help entry points. This is
+local verification only; live verification remains pending as described below.
 
 ## Verification and limits
 
@@ -98,8 +115,8 @@ Read this file, [AGENTS.md](AGENTS.md), [ARCHITECTURE.md](ARCHITECTURE.md),
 parent directory; all subsequent paths are relative to the repository:
 
 ```sh
-git clone https://github.com/dbwalker0min/strava-bulk-fittrackee-import.git
-cd strava-bulk-fittrackee-import
+git clone https://github.com/dbwalker0min/strava-fittrackee.git
+cd strava-fittrackee
 git fetch origin
 git switch codex/initial-importer
 git pull --ff-only

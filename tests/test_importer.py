@@ -3,9 +3,9 @@ import secrets
 
 import pytest
 
-from strava_bulk_import.archive import ImportProblem
-from strava_bulk_import.importer import prepare, run, upload
-from strava_bulk_import.journal import Journal
+from strava_fittrackee.archive import ImportProblem
+from strava_fittrackee.importer import prepare, run, upload
+from strava_fittrackee.journal import Journal
 
 from .conftest import GPX, PHOTO, make_archive
 
@@ -237,7 +237,7 @@ def test_unknown_selected_id_rejected(client, archive):
 
 
 def test_expired_unused_claim_rotates_token(client, server, archive, tmp_path, monkeypatch):
-    from strava_bulk_import.client import APIError
+    from strava_fittrackee.client import APIError
 
     journal = Journal(tmp_path / "journal.db", "account")
     old = secrets.token_urlsafe(32)
@@ -259,7 +259,7 @@ def test_expired_unused_claim_rotates_token(client, server, archive, tmp_path, m
 
 
 def test_release_requires_no_known_workout_and_rotates_token(client, server, tmp_path):
-    from strava_bulk_import.importer import release_confirmed
+    from strava_fittrackee.importer import release_confirmed
 
     journal = Journal(tmp_path / "journal.db", "account")
     old = secrets.token_urlsafe(32)
@@ -278,7 +278,7 @@ def test_release_requires_no_known_workout_and_rotates_token(client, server, tmp
 
 
 def test_lost_release_response_prevents_normal_import(client, server, archive, tmp_path):
-    from strava_bulk_import.importer import release_confirmed
+    from strava_fittrackee.importer import release_confirmed
 
     journal = Journal(tmp_path / "journal.db", "account")
     old = secrets.token_urlsafe(32)
@@ -298,7 +298,7 @@ def test_lost_release_response_prevents_normal_import(client, server, archive, t
 
 
 def test_release_refuses_bound_identity(client, server, tmp_path):
-    from strava_bulk_import.importer import release_confirmed
+    from strava_fittrackee.importer import release_confirmed
 
     journal = Journal(tmp_path / "journal.db", "account")
     journal.save("001", {"token": "secret", "phase": "uploading"})

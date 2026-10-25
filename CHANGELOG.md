@@ -34,6 +34,13 @@ Initial 0.1.0 implementation; not yet published to PyPI.
 - Cross-machine handoff in PROJECT_STATUS.md, design in ARCHITECTURE.md and
   development guardrails in AGENTS.md.
 
+### Changed
+
+- Unified the repository/checkout name as `strava-fittrackee` to match the
+  distribution and command. Renamed the Python source package/imports from
+  `strava_bulk_import` to `strava_fittrackee`; use
+  `python -m strava_fittrackee` for module execution. Saved state is unchanged.
+
 ### Fixed
 
 - Platform-specific locking branches now type-check correctly on Windows and POSIX.

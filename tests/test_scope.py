@@ -3,8 +3,8 @@ import struct
 import pytest
 from fitdecode.utils import compute_crc
 
-from strava_bulk_import.archive import ExcludedActivity, indoor_reason, recording_info
-from strava_bulk_import.importer import run
+from strava_fittrackee.archive import ExcludedActivity, indoor_reason, recording_info
+from strava_fittrackee.importer import run
 
 from .conftest import make_archive
 

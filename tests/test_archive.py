@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from strava_bulk_import.archive import (
+from strava_fittrackee.archive import (
     Activity,
     Archive,
     ImportProblem,
@@ -90,7 +90,7 @@ def test_path_traversal_rejected(tmp_path, archive):
 
 
 def test_bounded_gzip(tmp_path, archive, monkeypatch):
-    import strava_bulk_import.archive as module
+    import strava_fittrackee.archive as module
 
     row = {**archive.activities[0].row, "Filename": "activities/001.gpx.gz"}
     source = make_archive(tmp_path, [row], {row["Filename"]: gzip.compress(b"a" * 10000)})

@@ -9,10 +9,10 @@ import pytest
 from rich.text import Text
 from typer.testing import CliRunner
 
-from strava_bulk_import.auth import authorization_url
-from strava_bulk_import.cli import app
-from strava_bulk_import.client import Client, ImportProblem, origin, save_private
-from strava_bulk_import.journal import RunLock
+from strava_fittrackee.auth import authorization_url
+from strava_fittrackee.cli import app
+from strava_fittrackee.client import Client, ImportProblem, origin, save_private
+from strava_fittrackee.journal import RunLock
 
 
 def test_origin_rejects_unsafe_endpoints():

@@ -4,7 +4,7 @@ import pytest
 from rich.text import Text
 from typer.testing import CliRunner
 
-from strava_bulk_import import cli
+from strava_fittrackee import cli
 
 runner = CliRunner()
 

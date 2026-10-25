@@ -13,7 +13,7 @@ identity API v1. Upgrade compatibility requires explicit verification.
 
 ## Modules
 
-| Module under `src/strava_bulk_import/` | Responsibility |
+| Module under `src/strava_fittrackee/` | Responsibility |
 | --- | --- |
 | `cli.py` | Typer commands/options, typed command values, resource lifecycle and exit codes |
 | `archive.py` | Bounded ZIP/CSV reads, activity metadata, date/unit conversion, recording inspection, indoor signals, photos/captions |

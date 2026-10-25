@@ -2,10 +2,10 @@ import json
 
 import pytest
 
-from strava_bulk_import.client import Client, read_credentials, update_tokens
-from strava_bulk_import.errors import ImportProblem
-from strava_bulk_import.journal import Journal
-from strava_bulk_import.models import journal_entry
+from strava_fittrackee.client import Client, read_credentials, update_tokens
+from strava_fittrackee.errors import ImportProblem
+from strava_fittrackee.journal import Journal
+from strava_fittrackee.models import journal_entry
 
 
 def test_legacy_journal_format_round_trips_without_losing_recovery_fields(tmp_path):
@@ -83,7 +83,7 @@ def test_cli_recovery_keeps_single_activity_id_and_existing_journal(
 ):
     from typer.testing import CliRunner
 
-    from strava_bulk_import import cli
+    from strava_fittrackee import cli
 
     state = tmp_path / "state"
     namespace = "https://fit.example|synthetic|today"

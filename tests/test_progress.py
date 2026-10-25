@@ -8,12 +8,12 @@ import pytest
 from rich.console import Console
 from typer.testing import CliRunner
 
-from strava_bulk_import.cli import app
-from strava_bulk_import.client import APIError
-from strava_bulk_import.importer import run
-from strava_bulk_import.journal import Journal
-from strava_bulk_import.models import Outcome, Stage
-from strava_bulk_import.progress import RichReporter
+from strava_fittrackee.cli import app
+from strava_fittrackee.client import APIError
+from strava_fittrackee.importer import run
+from strava_fittrackee.journal import Journal
+from strava_fittrackee.models import Outcome, Stage
+from strava_fittrackee.progress import RichReporter
 
 from .conftest import make_archive
 

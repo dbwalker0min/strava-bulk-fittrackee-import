@@ -10,8 +10,8 @@ from pathlib import Path
 import httpx
 import pytest
 
-from strava_bulk_import.archive import Archive
-from strava_bulk_import.client import Client
+from strava_fittrackee.archive import Archive
+from strava_fittrackee.client import Client
 
 GPX = b"""<gpx xmlns="http://www.topografix.com/GPX/1/1"><trk><trkseg>
 <trkpt lat="40" lon="-120"><time>2026-01-01T12:00:00Z</time></trkpt>
