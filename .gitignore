@@ -216,5 +216,12 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+# Private Files
+data/
+
 # Streamlit
 .streamlit/secrets.toml
+
+# Local credentials, journals and platform metadata
+.strava-fittrackee/
+.DS_Store
